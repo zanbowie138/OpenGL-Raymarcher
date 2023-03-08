@@ -12,9 +12,10 @@ const float EPS = 0.0001;
 // FOV in the y direction
 const int FOV_Y = 70;
 
-float ambientIntensity = 0.12f;
-float diffuseIntensity = 0.5f;
-float specularIntensity = 0.4f;
+vec3 lightPos = vec3(0, 20, 30);
+float ambientIntensity = 0.12;
+float diffuseIntensity = 0.5;
+float specularIntensity = 0.4;
 
 int currentShape = NONE;
 
@@ -27,7 +28,7 @@ float sdSphere(vec3 p, float r)
 
 float sdScene(vec3 pos)
 {
-	return sdSphere(pos - vec3(0,0,50.0f), 10);
+	return sdSphere(pos - vec3(0,0,50), 10);
 }
 
 vec3 getViewRay() 
@@ -52,22 +53,32 @@ vec3 estimateNormal(vec3 p)
 	sdScene(vec3(p.x, p.y, p.z + EPS) - vec3(p.x, p.y, p.z - EPS)))); 
 }
 
-vec3 calcLighting(vec3 p) 
+vec3 calcColor(vec3 p) 
 {
-	vec3 lightPos = vec3(0, 20, 30);
-	
-	vec3 ambient = getAlpha * ambientIntensity;
+	vec3 ambientLight = vec3(1) * ambientIntensity;
 	
 	vec3 normal = estimateNormal(p);
+	// Vector from point to light
 	vec3 pointToLight = normalize(lightPos - p);
-    vec3 diffuse = vec3(max(dot(normalVector,pointToLightVector),0.0f) * diffuseIntensity);
+	float diffuseAmount = max(dot(normalVector,pointToLightVector),0)
+    vec3 diffuseLight = vec3(diffuseAmount * diffuseIntensity);
+
+	// Vector from camera to point
+	vec3 viewVector = normalize(p)
+	// Light reflected off of object
+	vec3 reflectVector = reflect(-pointToLight, estimateNormal(p))
+	// Higher the exponent, the smaller the glare is
+	vec3 specularAmount = vec3(pow(max(dot(viewVector, reflectVector),0),32))
+	vec3 specularLight = vec3(specularAmount * specularIntensity)
+
+	return getAlpha() * (ambientLight + diffuseLight + specularLight)
 }
 
 vec3 getAlpha() 
 {
 	if (currentShape == NONE)
 	{
-		return vec3(0.0f);
+		return vec3(0);
 	} 
 	else if (currentShape == SPHERE)
 	{
@@ -93,10 +104,10 @@ void main()
 	if (dist < minDist)
 	{
 		int currentShape = SPHERE;
-		o_Color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		o_Color = vec4(calcColor(pt), 1);
 	}
 	else 
 	{
-		o_Color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		o_Color = vec4(0);
 	}
 }
