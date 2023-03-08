@@ -3,19 +3,38 @@ out vec4 o_Color;
 
 uniform vec2 u_Resolution;
 
+#define NONE -1
+#define SPHERE 0
+#define PLANE 1
+
+const float EPS = 0.0001;
+
 // FOV in the y direction
 const int FOV_Y = 70;
 
+vec3 lightPos = vec3(0, 20, 30);
+float ambientIntensity = 0.12;
+float diffuseIntensity = 0.5;
+float specularIntensity = 0.4;
+
+int currentShape = NONE;
+
 // SDF equations
-// vec3 p is distance between view point and object center
+// vec3 p is distance between ray and object center
+
 float sdSphere(vec3 p, float r) 
 {
 	return length(p) - r;
 }
 
+float sdPlane(vec3 p) // Signed dist of a plane facing upwards
+{
+	return p.y;
+}
+
 float sdScene(vec3 pos)
 {
-	return sdSphere(pos - vec3(0,0,50.0f), 10);
+	return sdSphere(pos - vec3(0,0,50), 10);
 }
 
 vec3 getViewRay() 
@@ -32,20 +51,70 @@ vec3 getViewRay()
 	return vec3(x, y, z);
 }
 
+vec3 estimateNormal(vec3 p) 
+{
+	return normalize(vec3(
+	sdScene(vec3(p.x + EPS, p.y, p.z) - vec3(p.x - EPS, p.y, p.z)), 
+	sdScene(vec3(p.x, p.y + EPS, p.z) - vec3(p.x, p.y - EPS, p.z)), 
+	sdScene(vec3(p.x, p.y, p.z + EPS) - vec3(p.x, p.y, p.z - EPS)))); 
+}
+
+vec3 getAlpha() 
+{
+	if (currentShape == SPHERE)
+	{
+		return vec3(0.5, 0.1, 0.7);
+	}
+
+	return vec3(0);
+}
+
+
+vec3 calcColor(vec3 p) 
+{
+	vec3 ambientLight = vec3(1) * ambientIntensity;
+	
+	vec3 normal = estimateNormal(p);
+	// Vector from point to light
+	vec3 pointToLight = normalize(lightPos - p);
+	vec3 diffuseAmount = vec3(max(dot(normal,pointToLight),0));
+    vec3 diffuseLight = diffuseAmount * diffuseIntensity;
+
+	// Vector from camera to point
+	vec3 viewVector = normalize(p);
+	// Light reflected off of object
+	vec3 reflectVector = reflect(-pointToLight, estimateNormal(p));
+	// Higher the exponent, the smaller the glare is
+	vec3 specularAmount = vec3(pow(max(dot(viewVector, reflectVector),0),32));
+	vec3 specularLight = specularAmount * specularIntensity;
+
+	return vec3(1);
+	//return (ambientLight + diffuseLight + specularLight) * getAlpha();
+}
+
 void main()
 {
-	const float maxDist = 100.0f;
-	const float minDist = 0.01f;
-	vec3 view = getViewRay();
-	vec3 pt = vec3(0.0f, 0.0f, 0.0f);
+	const float maxDist = 100;
+	const float minDist = 0.01;
+	vec3 viewRay = getViewRay();
+
+	vec3 pt = vec3(0, 0, 0);
 	float dist = 0;
 	for (int i = 0; i < 100; i++) 
 	{
-		pt += view * dist;
+		pt += viewRay * dist;
 		dist = sdScene(pt);
 		if (dist < minDist || dist > maxDist) break;
 	}
+	
 
-	if (dist < minDist) o_Color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	else o_Color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	if (dist < minDist)
+	{
+		int currentShape = SPHERE;
+		o_Color = vec4(calcColor(),1);
+	}
+	else 
+	{
+		o_Color = vec4(0);
+	}
 }
