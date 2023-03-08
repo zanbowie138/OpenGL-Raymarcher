@@ -17,4 +17,6 @@ public:
 
 	void Activate();
 	void Delete();
+
+	GLint GetUniformLocation(const char *name);
 };
