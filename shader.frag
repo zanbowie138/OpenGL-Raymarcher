@@ -20,10 +20,14 @@ float specularIntensity = 0.4;
 int currentShape = NONE;
 
 // SDF equations
-// vec3 p is distance between view point and object center
+// vec3 p is distance between ray and object center
 float sdSphere(vec3 p, float r) 
 {
 	return length(p) - r;
+}
+float sdPlane(vec3 p) // Signed dist of a plane facing upwards
+{
+	return p.y;
 }
 
 float sdScene(vec3 pos)
@@ -88,10 +92,10 @@ vec3 getAlpha()
 
 void main()
 {
-	const float maxDist = 100.0f;
-	const float minDist = 0.01f;
+	const float maxDist = 100;
+	const float minDist = 0.01;
 	vec3 viewRay = getViewRay();
-	vec3 pt = vec3(0.0f, 0.0f, 0.0f);
+	vec3 pt = vec3(0, 0, 0);
 	float dist = 0;
 	for (int i = 0; i < 100; i++) 
 	{
